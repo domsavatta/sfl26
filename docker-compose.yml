@@ -1,0 +1,30 @@
+services:
+  mssql:
+    # restart: always
+    # command: "/opt/mssql/bin/sqlservr"
+    environment:
+      - ACCEPT_EULA=1
+      - MSSQL_SA_PASSWORD=Re@lGreatPashW0rd
+      - SA_PASSWORD=Re@lGreatPashW0rd
+      - MSSQL_PID=Developer
+      # - MSSQL_DATA_DIR=/var/opt/sqlserver
+      # - MSSQL_BACKUP_DIR=/var/opt/sqlserver
+      # - MSSQL_LOG_DIR=/var/opt/sqlserver
+      - SQLCMDUSER=sa
+      - SQLCMDPASSWORD=Re@lGreatPashW0rd
+      - SQLCMDSERVER=mssql
+    # volumes:
+    # - ../db_opt:/var/opt/mssql
+    # - ../db/opt:/var/opt
+    networks:
+      - pickem
+    expose:
+      - "1433"
+    ports:
+      - "1433:1433"
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    platform: linux/amd64
+networks:
+  pickem:
+    name: "picken"
+    driver: bridge
