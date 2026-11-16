@@ -17,15 +17,7 @@ export default function SignIn() {
   }, [state]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black font-sans">
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-4xl font-bold text-black dark:text-white">
-            Sports Fans League
-          </h1>
-        </div>
-      </header>
-
+    <div className="flex-1">
       <main className="max-w-6xl mx-auto px-4 py-8">
         <h2 className="text-2xl font-semibold text-black dark:text-white mb-4">
           Sign In

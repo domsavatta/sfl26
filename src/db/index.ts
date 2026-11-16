@@ -18,10 +18,21 @@ const sqlConfig = {
   },
 } as sql.config;
 
-export function query<Type>(query: string) {
+export type QueryParams = Record<string, string | number | boolean | Date | null>;
+
+/**
+ * Runs a query. Pass user-supplied values as `params` and reference them as
+ * `@name` in the SQL — never build them into the SQL string. Param values
+ * are not logged.
+ */
+export function query<Type>(query: string, params: QueryParams = {}) {
   return sql.connect(sqlConfig).then((pool: sql.ConnectionPool) => {
     console.log('Executing query:\n\n-----------\n', query, '\n\n------------\n');
-    return pool.query<Type>(query);
+    const request = pool.request();
+    for (const [name, value] of Object.entries(params)) {
+      request.input(name, value);
+    }
+    return request.query<Type>(query);
   });
 }
 
