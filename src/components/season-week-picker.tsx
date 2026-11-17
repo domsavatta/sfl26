@@ -24,6 +24,7 @@ export default function SeasonWeekPicker({
   weekId,
   weekLabel = "Week",
   allWeeksLabel,
+  hidden = {},
 }: {
   /** Page path the form submits to, e.g. "/standings". */
   action: string;
@@ -34,6 +35,8 @@ export default function SeasonWeekPicker({
   weekLabel?: string;
   /** If set, the week select starts with this "no week" option (e.g. "Overall"). */
   allWeeksLabel?: string;
+  /** Other query params to keep when the selection changes (e.g. sort). */
+  hidden?: Record<string, string>;
 }) {
   const season = seasons.find((s) => s.seasonId === seasonId);
   const weeksNewestFirst = [...(season?.weeks ?? [])].reverse();
@@ -46,6 +49,9 @@ export default function SeasonWeekPicker({
       scroll={false}
       className="grid grid-cols-2 gap-3 sm:flex sm:gap-3"
     >
+      {Object.entries(hidden).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <label className="block">
         <span className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
           Season

@@ -1,31 +1,60 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import SeasonWeekPicker from "@/components/season-week-picker";
 import {
   getPicksSeasons,
   getWeekPicks,
+  PICKS_SORTS,
+  sortPlayers,
   type PicksGame,
+  type PicksSort,
 } from "@/models/picks";
-import PicksGrid, { line } from "./picks-grid";
+import { formatGametime, line, toInt } from "@/lib/format";
+import PicksGrid from "./picks-grid";
 
 export const metadata: Metadata = {
   title: "View Picks | Sports Fans League",
 };
 
-/** Gametime holds Eastern wall-clock time in its UTC fields (see models/picks). */
-const formatGametime = (gametime: Date) =>
-  `${new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(gametime)} ET`;
-
-const toInt = (value: string | string[] | undefined) => {
-  const n = Number(Array.isArray(value) ? value[0] : value);
-  return Number.isInteger(n) && n > 0 ? n : null;
+const sortLabels: Record<PicksSort, string> = {
+  overall: "Overall rank",
+  week: "Weekly rank",
+  name: "Player",
 };
+
+/** Sort links; plain links so the sort is in the URL and works without JS. */
+function SortLinks({
+  sort,
+  seasonId,
+  weekId,
+}: {
+  sort: PicksSort;
+  seasonId: number;
+  weekId: number;
+}) {
+  return (
+    <nav aria-label="Sort players" className="flex items-center gap-2 text-sm">
+      <span className="text-zinc-600 dark:text-zinc-400">Sort by</span>
+      <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-700 overflow-hidden">
+        {PICKS_SORTS.map((s) => (
+          <Link
+            key={s}
+            href={`/view-picks?season=${seasonId}&week=${weekId}${s === "overall" ? "" : `&sort=${s}`}`}
+            scroll={false}
+            aria-current={s === sort ? "true" : undefined}
+            className={`px-2.5 sm:px-3 py-1.5 border-l first:border-l-0 border-zinc-300 dark:border-zinc-700 ${
+              s === sort
+                ? "bg-zinc-900 text-white dark:bg-white dark:text-black font-medium"
+                : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            }`}
+          >
+            {sortLabels[s]}
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}
 
 function GameCard({ game, number }: { game: PicksGame; number: number }) {
   const status = game.status ?? (game.official ? "Final" : null);
@@ -97,6 +126,9 @@ export default async function ViewPicks({
   const data =
     season && week ? await getWeekPicks(season.seasonId, week.weekId) : null;
   const anyStarted = data?.games.some((g) => g.started) ?? false;
+  const sortParam = Array.isArray(params.sort) ? params.sort[0] : params.sort;
+  const sort: PicksSort = PICKS_SORTS.find((s) => s === sortParam) ?? "overall";
+  const players = data ? sortPlayers(data.players, sort) : [];
 
   return (
     <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
@@ -110,6 +142,7 @@ export default async function ViewPicks({
             seasons={seasons}
             seasonId={season.seasonId}
             weekId={week.weekId}
+            hidden={sort === "overall" ? {} : { sort }}
           />
         )}
       </div>
@@ -137,10 +170,17 @@ export default async function ViewPicks({
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3 sm:mb-4">
               {anyStarted
-                ? "Picks appear once a game kicks off. Players are sorted by overall season rank."
+                ? "Picks appear once a game kicks off."
                 : "No games have kicked off yet. Picks appear once each game starts."}
             </p>
-            <PicksGrid games={data.games} players={data.players} />
+            <div className="mb-3 sm:mb-4">
+              <SortLinks
+                sort={sort}
+                seasonId={season.seasonId}
+                weekId={week.weekId}
+              />
+            </div>
+            <PicksGrid games={data.games} players={players} sort={sort} />
             <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
               <li>
                 <span className="font-bold">★</span> Lock of the week

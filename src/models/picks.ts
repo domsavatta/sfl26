@@ -62,12 +62,35 @@ export type PlayerPick = {
 export type PicksPlayer = {
   playerId: number;
   playerName: string;
-  rank: number | null; // overall (combined) season rank; null if unranked
+  overallRank: number | null; // combined season rank; null if unranked
+  weekRank: number | null; // combined rank for this week; null if none yet
   picks: Record<number, PlayerPick>; // by gameId; started games only
   pickMade: Set<number>; // gameIds of unstarted games this player has picked
   wins: number;
   losses: number;
 };
+
+export type PicksSort = "overall" | "week" | "name";
+
+export const PICKS_SORTS: readonly PicksSort[] = ["overall", "week", "name"];
+
+/**
+ * Sorts players by overall rank, this week's rank, or name. Unranked players
+ * go last; ties are broken by name.
+ */
+export function sortPlayers(
+  players: PicksPlayer[],
+  sort: PicksSort,
+): PicksPlayer[] {
+  const byName = (a: PicksPlayer, b: PicksPlayer) =>
+    a.playerName.localeCompare(b.playerName, undefined, { sensitivity: "base" });
+  if (sort === "name") return [...players].sort(byName);
+  const key = sort === "week" ? "weekRank" : "overallRank";
+  return [...players].sort(
+    (a, b) =>
+      (a[key] ?? Infinity) - (b[key] ?? Infinity) || byName(a, b),
+  );
+}
 
 export type WeekPicks = {
   games: PicksGame[];
@@ -75,7 +98,7 @@ export type WeekPicks = {
 };
 
 /** Current US Eastern time as a datetime, to compare with Game.Gametime. */
-const NOW_EASTERN =
+export const NOW_EASTERN =
   "cast(sysdatetimeoffset() at time zone 'Eastern Standard Time' as datetime)";
 
 /** Seasons (newest first), each with its live weeks that have games. */
@@ -109,7 +132,22 @@ export async function getPicksSeasons(): Promise<PicksSeason[]> {
   }));
 }
 
-type GameDbRow = {
+/**
+ * Game columns, for "select ${GAME_COLUMNS} ${GAME_FROM} where ...".
+ * Needs @now (see NOW_EASTERN) declared for the started flag.
+ */
+export const GAME_COLUMNS = `g.GameID gameId, f.League league,
+  g.FavoriteID favoriteId, f.Name favoriteName, g.FavoriteScore favoriteScore,
+  g.UnderdogID underdogId, u.Name underdogName, g.UnderdogScore underdogScore,
+  g.FavoriteSite favoriteSite, g.Spread spread, g.Gametime gametime,
+  g.Storyline storyline, g.Status status, g.Official official, g.Tie tie,
+  g.WinnerID winnerId,
+  cast(iif(g.Gametime <= @now, 1, 0) as bit) started`;
+export const GAME_FROM = `from Game g
+  join Team f on f.TeamID = g.FavoriteID
+  join Team u on u.TeamID = g.UnderdogID`;
+
+export type GameDbRow = {
   gameId: number;
   league: string;
   favoriteId: number;
@@ -132,7 +170,8 @@ type GameDbRow = {
 type PlayerDbRow = {
   playerId: number;
   playerName: string;
-  rank: number | null;
+  overallRank: number | null;
+  weekRank: number | null;
 };
 
 type PickDbRow = {
@@ -144,6 +183,34 @@ type PickDbRow = {
 
 const locations = (site: number): [Team["location"], Team["location"]] =>
   site === 1 ? ["Home", "Away"] : site === 2 ? ["Away", "Home"] : ["Neutral", "Neutral"];
+
+export function toGame(g: GameDbRow): PicksGame {
+  const [favoriteLocation, underdogLocation] = locations(g.favoriteSite);
+  return {
+    gameId: g.gameId,
+    league: g.league,
+    favorite: {
+      teamId: g.favoriteId,
+      name: g.favoriteName,
+      score: g.favoriteScore,
+      location: favoriteLocation,
+    },
+    underdog: {
+      teamId: g.underdogId,
+      name: g.underdogName,
+      score: g.underdogScore,
+      location: underdogLocation,
+    },
+    spread: g.spread,
+    gametime: g.gametime,
+    storyline: g.storyline,
+    status: g.status,
+    official: g.official,
+    tie: g.tie,
+    winnerId: g.winnerId,
+    started: g.started,
+  };
+}
 
 export async function getWeekPicks(
   seasonId: number,
@@ -158,16 +225,8 @@ export async function getWeekPicks(
        join Season s on s.SeasonID = w.SeasonID and s.Active = 1
        where w.WeekID = @weekId and w.SeasonID = @seasonId and w.Live = 1);
 
-     select g.GameID gameId, f.League league,
-       g.FavoriteID favoriteId, f.Name favoriteName, g.FavoriteScore favoriteScore,
-       g.UnderdogID underdogId, u.Name underdogName, g.UnderdogScore underdogScore,
-       g.FavoriteSite favoriteSite, g.Spread spread, g.Gametime gametime,
-       g.Storyline storyline, g.Status status, g.Official official, g.Tie tie,
-       g.WinnerID winnerId,
-       cast(iif(g.Gametime <= @now, 1, 0) as bit) started
-     from Game g
-     join Team f on f.TeamID = g.FavoriteID
-     join Team u on u.TeamID = g.UnderdogID
+     select ${GAME_COLUMNS}
+     ${GAME_FROM}
      where g.WeekID = @week
      order by g.Gametime, g.GameID;
 
@@ -178,11 +237,14 @@ export async function getWeekPicks(
        select p.PlayerId from Pick p join Game g on g.GameID = p.GameID
        where g.WeekID = @week
      )
-     select p.PlayerId playerId, p.Name playerName, ss.Rank rank
+     select p.PlayerId playerId, p.Name playerName,
+       ss.Rank overallRank, nullif(ws.Ranking, 0) weekRank
      from players pl
      join Player p on p.PlayerId = pl.PlayerId and p.PNG = 0
      left join SeasonStanding ss
        on ss.SeasonID = @seasonId and ss.PlayerId = pl.PlayerId and ss.League = 'O'
+     left join WeekStanding ws
+       on ws.WeekID = @week and ws.PlayerId = pl.PlayerId and ws.League = 'O'
      where @week is not null
      order by iif(ss.Rank is null, 1, 0), ss.Rank, p.Name;
 
@@ -207,33 +269,7 @@ export async function getWeekPicks(
       { playerId: number; gameId: number }[],
     ];
 
-  const games: PicksGame[] = gameRows.map((g) => {
-    const [favoriteLocation, underdogLocation] = locations(g.favoriteSite);
-    return {
-      gameId: g.gameId,
-      league: g.league,
-      favorite: {
-        teamId: g.favoriteId,
-        name: g.favoriteName,
-        score: g.favoriteScore,
-        location: favoriteLocation,
-      },
-      underdog: {
-        teamId: g.underdogId,
-        name: g.underdogName,
-        score: g.underdogScore,
-        location: underdogLocation,
-      },
-      spread: g.spread,
-      gametime: g.gametime,
-      storyline: g.storyline,
-      status: g.status,
-      official: g.official,
-      tie: g.tie,
-      winnerId: g.winnerId,
-      started: g.started,
-    };
-  });
+  const games = gameRows.map(toGame);
   const gamesById = new Map(games.map((g) => [g.gameId, g]));
 
   const players: PicksPlayer[] = playerRows.map((p) => ({

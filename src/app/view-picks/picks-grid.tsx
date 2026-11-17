@@ -1,8 +1,10 @@
 import ScrollX from "@/components/scroll-x";
+import { line } from "@/lib/format";
 import type {
   PickResult,
   PicksGame,
   PicksPlayer,
+  PicksSort,
 } from "@/models/picks";
 
 const resultClass: Record<PickResult, string> = {
@@ -20,18 +22,31 @@ const resultLabel: Record<PickResult, string> = {
 };
 
 /**
- * Players (rows, by overall rank) × games (columns). Rank and player are
- * pinned so the picks scroll sideways on a phone. Picks for games that
+ * Players (rows, in the order given) × games (columns). Rank and player are
+ * pinned so the picks scroll sideways on a phone. The pinned rank is the one
+ * the rows are sorted by (overall when sorted by name); the other rank gets
+ * its own column. Picks for games that
  * haven't started are not loaded; those cells show a checkmark if the player
  * has picked, so everyone can see who still needs to.
  */
+const ranks = {
+  overallRank: { label: "Rk", title: "Overall season rank" },
+  weekRank: { label: "Wk", title: "This week's rank" },
+} as const;
+
 export default function PicksGrid({
   games,
   players,
+  sort,
 }: {
   games: PicksGame[];
   players: PicksPlayer[];
+  sort: PicksSort;
 }) {
+  const [pinnedRank, otherRank] =
+    sort === "week"
+      ? (["weekRank", "overallRank"] as const)
+      : (["overallRank", "weekRank"] as const);
   const cell = "py-2 px-1 sm:px-2 whitespace-nowrap";
   const pinnedBg =
     "bg-white dark:bg-zinc-900 group-hover:bg-zinc-50 dark:group-hover:bg-zinc-800";
@@ -42,18 +57,27 @@ export default function PicksGrid({
     <ScrollX>
       <table className="w-full text-sm">
         <caption className="sr-only">
-          Each player&apos;s picks, by overall season rank
+          Each player&apos;s picks, sorted by{" "}
+          {sort === "name" ? "player name" : ranks[pinnedRank].title.toLowerCase()}
         </caption>
         <thead>
           <tr className="border-b border-zinc-200 dark:border-zinc-800 align-bottom">
             <th scope="col" className={`${cell} ${rankCell}`}>
-              <span className="sr-only">Rank</span>
+              <span className="sr-only">{ranks[pinnedRank].title}</span>
             </th>
             <th
               scope="col"
               className={`${cell} ${nameCell} font-semibold text-zinc-700 dark:text-zinc-300`}
             >
               Player
+            </th>
+            <th
+              scope="col"
+              className={`${cell} text-center font-semibold text-zinc-700 dark:text-zinc-300`}
+            >
+              <abbr title={ranks[otherRank].title} className="no-underline">
+                {ranks[otherRank].label}
+              </abbr>
             </th>
             <th
               scope="col"
@@ -88,7 +112,7 @@ export default function PicksGrid({
               <td
                 className={`${cell} ${rankCell} font-semibold tabular-nums text-black dark:text-white`}
               >
-                {p.rank ?? ""}
+                {p[pinnedRank] ?? ""}
               </td>
               <th
                 scope="row"
@@ -96,6 +120,9 @@ export default function PicksGrid({
               >
                 <span className="block truncate">{p.playerName}</span>
               </th>
+              <td className={`${cell} text-center tabular-nums text-zinc-600 dark:text-zinc-400`}>
+                {p[otherRank] ?? "—"}
+              </td>
               <td className={`${cell} text-center tabular-nums text-black dark:text-white`}>
                 {p.wins}-{p.losses}
               </td>
@@ -150,10 +177,4 @@ export default function PicksGrid({
       </table>
     </ScrollX>
   );
-}
-
-/** "-3.5" / "+3.5", or "PK" for a pick'em. */
-export function line(game: PicksGame, side: "favorite" | "underdog") {
-  if (!game.spread) return "PK";
-  return `${side === "favorite" ? "-" : "+"}${game.spread}`;
 }
