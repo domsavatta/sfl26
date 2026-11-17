@@ -28,7 +28,9 @@ export default function ScrollX({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative">
-      <div ref={ref} className="overflow-x-auto">
+      {/* relative: absolutely positioned content (e.g. sr-only text) must be
+          contained by the scroller, or it widens the page. */}
+      <div ref={ref} className="relative overflow-x-auto">
         {children}
       </div>
       <div

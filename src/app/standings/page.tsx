@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SeasonWeekPicker from "@/components/season-week-picker";
 import StandingsTable, {
   type StandingsColumn,
 } from "@/components/standings-table";
@@ -9,7 +10,6 @@ import {
   type OverallStandingRow,
   type WeekStandingRow,
 } from "@/models/standings";
-import StandingsPicker from "./standings-picker";
 
 export const metadata: Metadata = {
   title: "Standings | Sports Fans League",
@@ -335,10 +335,13 @@ export default async function Standings({
           Standings
         </h1>
         {season && (
-          <StandingsPicker
+          <SeasonWeekPicker
+            action="/standings"
             seasons={seasons}
             seasonId={season.seasonId}
             weekId={week?.weekId ?? null}
+            weekLabel="Standings"
+            allWeeksLabel="Overall"
           />
         )}
       </div>
