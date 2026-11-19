@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteHeader from "@/components/site-header";
-import { getCurrentPlayer } from "@/lib/session";
+import { getSession } from "@/lib/session";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,7 +24,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const player = await getCurrentPlayer();
+  const session = await getSession();
+  const player = session
+    ? { playerId: session.playerId, playerName: session.playerName }
+    : null;
 
   return (
     <html
@@ -34,7 +37,8 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         {/* Wrapper, not <body>: the unlayered body rule in globals.css overrides utilities on body. */}
         <div className="flex-1 flex flex-col bg-zinc-50 dark:bg-black font-sans">
-          <SiteHeader player={player} />
+          {/* isAdmin only shows the Admin link; admin pages check the role themselves. */}
+          <SiteHeader player={player} isAdmin={!!session?.isAdmin} />
           {children}
         </div>
       </body>

@@ -69,8 +69,8 @@ export async function createFixtures(): Promise<Fixtures> {
     declare @now datetime =
       cast(sysdatetimeoffset() at time zone 'Eastern Standard Time' as datetime);
 
-    insert into Season (Name, Sort, Active, TotalPlayers, IsCurrent)
-    values ('Test Season', (select isnull(max(Sort), 0) + 1 from Season), 1, 0, 1);
+    insert into Season (Name, Sort, Active, TotalPlayers, IsCurrent, defaultPassword)
+    values ('Test Season', (select isnull(max(Sort), 0) + 1 from Season), 1, 0, 1, '');
     declare @season int = scope_identity();
 
     declare @t1 int, @t2 int, @t3 int, @t4 int;

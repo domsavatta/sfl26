@@ -25,6 +25,9 @@ export default function SignInForm({ next }: { next: string }) {
           id="name"
           name="name"
           autoComplete="username"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="next"
           defaultValue={state?.name}
           className={inputClass}
           required
@@ -42,6 +45,7 @@ export default function SignInForm({ next }: { next: string }) {
           id="password"
           name="password"
           autoComplete="current-password"
+          enterKeyHint="go"
           className={inputClass}
           required
         />

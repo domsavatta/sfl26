@@ -32,7 +32,13 @@ function SignInLink() {
   );
 }
 
-export default function SiteHeader({ player }: { player: Player | null }) {
+export default function SiteHeader({
+  player,
+  isAdmin = false,
+}: {
+  player: Player | null;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
@@ -53,14 +59,26 @@ export default function SiteHeader({ player }: { player: Player | null }) {
         <div className="order-2 lg:order-3 ml-auto lg:ml-0 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 min-w-0">
           {player ? (
             <>
-              <Link
-                href="/account"
-                title="Account: change your email or password"
-                aria-current={pathname === "/account" ? "page" : undefined}
-                className="max-w-[8rem] sm:max-w-[12rem] truncate text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:underline"
-              >
-                Hello {player.playerName}
-              </Link>
+              <div className="flex items-baseline gap-2 min-w-0 text-xs sm:text-sm">
+                <Link
+                  href="/account"
+                  title="Account: change your email or password"
+                  aria-current={pathname === "/account" ? "page" : undefined}
+                  className="max-w-[8rem] sm:max-w-[12rem] truncate text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:underline"
+                >
+                  Hello {player.playerName}
+                </Link>
+                {/* Here rather than in the nav: five nav links don't fit on a phone. */}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    aria-current={pathname.startsWith("/admin") ? "page" : undefined}
+                    className="shrink-0 font-medium text-blue-600 dark:text-blue-400 hover:underline aria-[current=page]:text-black dark:aria-[current=page]:text-white"
+                  >
+                    Admin
+                  </Link>
+                )}
+              </div>
               <form action={signout}>
                 <button type="submit" className={buttonClass}>
                   Sign out
