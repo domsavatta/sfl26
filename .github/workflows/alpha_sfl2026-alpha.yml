@@ -33,11 +33,11 @@ jobs:
         run: |
           cp -r ./.next/static ./.next/standalone/.next ## this probably belongs on a CDN
           cp -r ./public ./.next/standalone ## this probably belongs on a CDN
-          find ./.next/standalone -type f -name "*.js" | xargs sed -i 's/node:inspector/node--inspector/g'
-          find ./.next/standalone -type f -name "*node:inspector*" -exec bash -c 'mv "$0" "${0//:/--}"' {} \;
+          # find ./.next/standalone -type f -name "*.js" | xargs sed -i 's/node:inspector/node--inspector/g'
+          # find ./.next/standalone -type f -name "*node:inspector*" -exec bash -c 'mv "$0" "${0//:/--}"' {} \;
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           include-hidden-files: true
           name: next-app
@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: next-app
 
