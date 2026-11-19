@@ -15,14 +15,7 @@ import { signInUser } from "./user";
 
 const DEFAULT = "test-default-password";
 
-/** The fixture season plus its season role ("player" + "Test", from "Test Season"). */
-async function setup() {
-  const f = await createFixtures();
-  const role = await testRequest().query(
-    `insert into webpages_Roles (RoleName) output inserted.RoleId roleId values ('playerTest')`,
-  );
-  return { ...f, seasonRole: role.recordset[0].roleId as number };
-}
+const setup = createFixtures;
 
 const input = (change: Partial<PlayerInput> = {}): PlayerInput => ({
   name: "Test New Player",
@@ -87,7 +80,7 @@ describe("createPlayer", () => {
       hasLogin: true,
     });
     expect(await inSeason(playerId, f.seasonId)).toBe(true);
-    expect(await roles(playerId)).toEqual([f.seasonRole]);
+    expect(await roles(playerId)).toEqual([]); // season sign-up is PlayersSeason only
     expect(await signInUser("Test New Player", DEFAULT)).toMatchObject({ playerId });
   });
 

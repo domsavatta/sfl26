@@ -2,9 +2,7 @@
  * Admin: players.
  *
  * - Player names are unique: players sign in by name.
- * - "In the current season" is a PlayersSeason row plus the season's role
- *   in webpages_UsersInRoles ("player" + the season's year, e.g. player2023),
- *   which the old site uses; they're kept together. A player with picks this
+ * - "In the current season" is a PlayersSeason row. A player with picks this
  *   season can't be removed from it.
  * - Admin is webpages_UsersInRoles role 1.
  * - Hidden is Player.PNG: hidden players can't sign in and don't appear in
@@ -60,9 +58,7 @@ export type SavePlayerResult =
   | { ok: false; problem: PlayerProblem };
 
 const SEASON = `declare @seasonId int = (
-    select top 1 SeasonID from Season where IsCurrent = 1 order by Sort desc);
-  declare @seasonRole int = (select RoleId from webpages_Roles
-    where RoleName = 'player' + left((select Name from Season where SeasonID = @seasonId), 4));`;
+    select top 1 SeasonID from Season where IsCurrent = 1 order by Sort desc);`;
 
 const PLAYER_COLUMNS = `p.PlayerId playerId, p.Name name,
   nullif(p.FirstName, '') firstName, nullif(p.LastName, '') lastName,
@@ -111,8 +107,8 @@ export async function getPlayer(playerId: number): Promise<AdminPlayerDetail | n
 
 /**
  * Sets season membership and admin to match @inSeason / @admin; needs
- * @playerId. Roles need a login (webpages_Membership) row; every player made
- * here has one, and a player without one can't sign in to use a role anyway.
+ * @playerId. The admin role needs a login (webpages_Membership) row; every
+ * player made here has one, and a player without one can't sign in anyway.
  */
 const SYNC_ROLES = `
   declare @hasLogin bit = iif(exists (select 1 from webpages_Membership where UserId = @playerId), 1, 0);
@@ -120,15 +116,9 @@ const SYNC_ROLES = `
   begin
     if not exists (select 1 from PlayersSeason where PlayerId = @playerId and SeasonID = @seasonId)
       insert into PlayersSeason (SeasonID, PlayerId) values (@seasonId, @playerId);
-    if @seasonRole is not null and @hasLogin = 1 and not exists (select 1 from webpages_UsersInRoles
-        where UserId = @playerId and RoleId = @seasonRole)
-      insert into webpages_UsersInRoles (UserId, RoleId) values (@playerId, @seasonRole);
   end
   else
-  begin
     delete from PlayersSeason where PlayerId = @playerId and SeasonID = @seasonId;
-    delete from webpages_UsersInRoles where UserId = @playerId and RoleId = @seasonRole;
-  end
   if @admin = 1
   begin
     if @hasLogin = 1 and not exists (select 1 from webpages_UsersInRoles where UserId = @playerId and RoleId = 1)

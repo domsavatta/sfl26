@@ -10,8 +10,6 @@
  * - goes after the others (Sort = highest + 1);
  * - needs a default password (Season.defaultPassword, up to 10 characters),
  *   used for new players and password resets;
- * - gets its "player" + year role (e.g. player2024), which the old site
- *   uses, when its name starts with a year;
  * - starts with no players: add them on the admin Players page.
  * Season.TotalPlayers isn't used; it's required, so new seasons get 0.
  */
@@ -78,11 +76,6 @@ export async function createSeason(season: SeasonInput): Promise<SaveSeasonResul
        insert into Season (Name, Sort, Active, TotalPlayers, IsCurrent, defaultPassword)
        values (@name, (select isnull(max(Sort), 0) + 1 from Season), 1, 0, 0, @defaultPassword);
        set @seasonId = scope_identity();
-
-       -- The season's role, as the old site expects ("player" + year).
-       if @name like '[12][0-9][0-9][0-9]%'
-         and not exists (select 1 from webpages_Roles where RoleName = 'player' + left(@name, 4))
-         insert into webpages_Roles (RoleName) values ('player' + left(@name, 4));
 
        if @makeCurrent = 1
        begin

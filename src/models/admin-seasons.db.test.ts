@@ -9,8 +9,6 @@ async function seasonRow(seasonId: number) {
   return result.recordset[0];
 }
 
-const roleExists = async (name: string) =>
-  (await testRequest().query(`select count(*) n from webpages_Roles where RoleName = '${name}'`)).recordset[0].n === 1;
 
 describe("getSeasons", () => {
   test("newest first, with week and player counts and the current season", async () => {
@@ -22,7 +20,8 @@ describe("getSeasons", () => {
 });
 
 describe("createSeason", () => {
-  test("adds a season after the others, with its role and no players, not current", async () => {
+  test("adds a season after the others, with no players and no role, not current", async () => {
+    const rolesBefore = (await testRequest().query(`select count(*) n from webpages_Roles`)).recordset[0].n;
     const f = await createFixtures();
 
     const result = await createSeason({ name: "2099 Season", defaultPassword: "pw2099", makeCurrent: false });
@@ -38,7 +37,7 @@ describe("createSeason", () => {
       TotalPlayers: 0,
       defaultPassword: "pw2099",
     });
-    expect(await roleExists("player2099")).toBe(true);
+    expect((await testRequest().query(`select count(*) n from webpages_Roles`)).recordset[0].n).toBe(rolesBefore);
     expect((await getSeasons()).find((s) => s.seasonId === seasonId)).toMatchObject({ players: 0, weeks: 0 });
     expect((await seasonRow(f.seasonId)).IsCurrent).toBe(true);
   });
@@ -51,11 +50,8 @@ describe("createSeason", () => {
     expect((await seasonRow(f.seasonId)).IsCurrent).toBe(false);
   });
 
-  test("no role for a name without a year; names are unique", async () => {
+  test("names are unique", async () => {
     await createFixtures();
-    const before = (await testRequest().query(`select count(*) n from webpages_Roles`)).recordset[0].n;
-    expect((await createSeason({ name: "Bonus Season", defaultPassword: "x", makeCurrent: false })).ok).toBe(true);
-    expect((await testRequest().query(`select count(*) n from webpages_Roles`)).recordset[0].n).toBe(before);
     expect(await createSeason({ name: "Test Season", defaultPassword: "x", makeCurrent: false })).toEqual({
       ok: false,
       problem: "duplicate-name",
