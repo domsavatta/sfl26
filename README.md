@@ -31,6 +31,20 @@ npm install
 
 `ncu -u` rewrites the version ranges in `package.json`; `npm install` then installs them and updates `package-lock.json`. Run `npm run build` and `npm run lint` afterwards to catch breaking changes.
 
+## Testing
+
+Tests use [Vitest](https://vitest.dev).
+
+```bash
+npm test          # unit tests, no database needed (watches for changes)
+npm run test:db   # database tests
+```
+
+- **Unit tests** (`src/**/*.test.ts(x)`): formatting, sorting, reading the Make Picks form, and the Make Picks form's behavior.
+- **Database tests** (`*.db.test.ts`): Make Picks loading and saving (`src/models/make-picks.db.test.ts`) and the `SetPicks` draft in `sql/` (`sql/SetPicks.db.test.ts`, which runs the script inside the test, so it doesn't need to be applied first).
+
+The database tests use the database configured in `.env`. Each test runs in a transaction that is always rolled back, and creates its own season, weeks, teams, games and players, so it neither depends on nor changes real data. While a test runs, its uncommitted rows lock parts of the tables it uses, so other queries may wait briefly; point `.env` at a development database, not production.
+
 ## Standings
 
 The Standings page (`/standings`) reads precalculated data from the `SeasonStanding` and `WeekStanding` tables ([`src/models/standings.ts`](src/models/standings.ts)). These tables are read-only, derived data: the app never writes to them. They are rebuilt by the `SetStandings` stored procedure.
