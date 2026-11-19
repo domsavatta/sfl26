@@ -6,6 +6,7 @@ name: Build and deploy Node.js app to Azure Web App - sfl2026-alpha
 on:
   push:
     branches:
+      - alpha
       - 'standings-auth-navigation'
   workflow_dispatch:
 
@@ -21,7 +22,7 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '24.x'
+          node-version: "24.x"
 
       - name: npm install, build, and test
         run: |
@@ -29,11 +30,19 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      - name: Copy static assets
+        run: |
+          cp -r ./.next/static ./.next/standalone/.next ## this probably belongs on a CDN
+          cp -r ./public ./.next/standalone ## this probably belongs on a CDN
+          find ./.next/standalone -type f -name "*.js" | xargs sed -i 's/node:inspector/node--inspector/g'
+          find ./.next/standalone -type f -name "*node:inspector*" -exec bash -c 'mv "$0" "${0//:/--}"' {} \;
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: .
+          include-hidden-files: true
+          name: next-app
+          path: ./.next/standalone
 
   deploy:
     runs-on: ubuntu-latest
@@ -46,8 +55,8 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: node-app
-      
+          name: next-app
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -55,11 +64,10 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_2552FC9BBEAA461FB4428E18A3A6808E }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_025F70715E194E8BAB050B113CE33AC5 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: "Deploy to Azure Web App"
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'sfl2026-alpha'
-          slot-name: 'Production'
+          app-name: "sfl2026-alpha"
+          slot-name: "Production"
           package: .
-          
