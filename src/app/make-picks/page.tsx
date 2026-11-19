@@ -36,7 +36,7 @@ export default async function MakePicks() {
       {!player ? (
         <Message>
           <Link
-            href="/sign-in"
+            href="/sign-in?next=%2Fmake-picks"
             className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
           >
             Sign in

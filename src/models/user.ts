@@ -15,7 +15,9 @@ const signInSql = `select
   left join webpages_UsersInRoles r
   on r.UserId = p.PlayerId and r.RoleId = 1
   left join playersSeason ps
-  on ps.PlayerId = p.PlayerId and ps.SeasonID = (select SeasonID from season where isCurrent = 1)
+  on ps.PlayerId = p.PlayerId and ps.SeasonID = (
+    -- top 1: don't fail if more than one season is marked current
+    select top 1 SeasonID from Season where IsCurrent = 1 order by Sort desc)
   where 1=1
   and p.name = @playerName
   and p.PNG = 0`;

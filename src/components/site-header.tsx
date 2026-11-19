@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { signout } from "@/app/actions/auth";
 import type { Player } from "@/interfaces";
+import { signInHref } from "@/lib/redirect-path";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -14,6 +16,21 @@ const navLinks = [
 
 const buttonClass =
   "whitespace-nowrap rounded-md border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-sm font-medium text-black dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors";
+
+/** Sign in, then come back to this page (including its query, e.g. the week). */
+function SignInLink() {
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  const href =
+    pathname === "/sign-in"
+      ? `/sign-in${search ? `?${search}` : ""}`
+      : signInHref(search ? `${pathname}?${search}` : pathname);
+  return (
+    <Link href={href} className={buttonClass}>
+      Sign in
+    </Link>
+  );
+}
 
 export default function SiteHeader({ player }: { player: Player | null }) {
   const pathname = usePathname();
@@ -36,9 +53,14 @@ export default function SiteHeader({ player }: { player: Player | null }) {
         <div className="order-2 lg:order-3 ml-auto lg:ml-0 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 min-w-0">
           {player ? (
             <>
-              <span className="max-w-[8rem] sm:max-w-[12rem] truncate text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+              <Link
+                href="/account"
+                title="Account: change your email or password"
+                aria-current={pathname === "/account" ? "page" : undefined}
+                className="max-w-[8rem] sm:max-w-[12rem] truncate text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:underline"
+              >
                 Hello {player.playerName}
-              </span>
+              </Link>
               <form action={signout}>
                 <button type="submit" className={buttonClass}>
                   Sign out
@@ -46,9 +68,15 @@ export default function SiteHeader({ player }: { player: Player | null }) {
               </form>
             </>
           ) : (
-            <Link href="/sign-in" className={buttonClass}>
-              Sign in
-            </Link>
+            <Suspense
+              fallback={
+                <Link href="/sign-in" className={buttonClass}>
+                  Sign in
+                </Link>
+              }
+            >
+              <SignInLink />
+            </Suspense>
           )}
         </div>
 
