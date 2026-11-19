@@ -7,7 +7,7 @@ on:
   push:
     branches:
       - alpha
-      - 'standings-auth-navigation'
+      - "standings-auth-navigation"
   workflow_dispatch:
 
 jobs:
@@ -17,10 +17,10 @@ jobs:
       contents: read #This is required for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js version
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
           node-version: "24.x"
 
