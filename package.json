@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start:next": "next start",
+    "start": "node ./server.js",
     "lint": "eslint",
     "test": "vitest --project unit",
     "test:db": "vitest run --project db"
