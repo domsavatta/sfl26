@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "debug": "^4.4.3",
+    "import-in-the-middle": "^3.6.0",
     "mssql": "^12.7.14",
     "next": "16.4.6",
     "react": "19.3.1",
