@@ -10,6 +10,7 @@ import {
   type PicksSort,
 } from "@/models/picks";
 import { formatGametime, line, toInt } from "@/lib/format";
+import { getCurrentPlayer } from "@/lib/session";
 import PicksGrid from "./picks-grid";
 
 export const metadata: Metadata = {
@@ -112,7 +113,7 @@ export default async function ViewPicks({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const seasons = await getPicksSeasons();
+  const [seasons, me] = await Promise.all([getPicksSeasons(), getCurrentPlayer()]);
 
   // Default: current season's latest live week. Unknown ids fall back the same way.
   const season =
@@ -180,7 +181,7 @@ export default async function ViewPicks({
                 weekId={week.weekId}
               />
             </div>
-            <PicksGrid games={data.games} players={players} sort={sort} />
+            <PicksGrid games={data.games} players={players} sort={sort} highlightPlayerId={me?.playerId} />
             <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
               <li>
                 <span className="font-bold">★</span> Lock of the week

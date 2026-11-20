@@ -27,7 +27,7 @@ const PROBLEMS: Record<PlayerProblem, string> = {
 const NOT_ADMIN = { ok: false, message: "Only admins can change players." };
 const NO_DEFAULT_PASSWORD = {
   ok: false,
-  message: "There's no default password: set one on the current season (Season.defaultPassword).",
+  message: "There's no default password: set one for the current season on the admin Seasons page.",
 };
 
 async function run(

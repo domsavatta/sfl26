@@ -6,6 +6,7 @@ import {
 } from "@/components/standings-columns";
 import StandingsTable from "@/components/standings-table";
 import { formatGametime, line } from "@/lib/format";
+import { getCurrentPlayer } from "@/lib/session";
 import { getHomeData, type HomeGame } from "@/models/home";
 import { getOverallStandings, getWeekStandings } from "@/models/standings";
 
@@ -135,7 +136,7 @@ function GameCard({ game }: { game: HomeGame }) {
 }
 
 export default async function Home() {
-  const { season, weeks } = await getHomeData();
+  const [{ season, weeks }, me] = await Promise.all([getHomeData(), getCurrentPlayer()]);
   const [overall, weekStandings] = season
     ? await Promise.all([
         getOverallStandings(season.seasonId),
@@ -197,6 +198,7 @@ export default async function Home() {
                   <StandingsTable
                     columns={seasonColumns}
                     rows={overall.combined}
+                    highlightPlayerId={me?.playerId}
                   />
                 ) : (
                   <p className="text-zinc-600 dark:text-zinc-400">
@@ -225,7 +227,7 @@ export default async function Home() {
                       linkText="Details →"
                     />
                     {hasResults ? (
-                      <StandingsTable columns={homeWeekColumns} rows={rows} />
+                      <StandingsTable columns={homeWeekColumns} rows={rows} highlightPlayerId={me?.playerId} />
                     ) : (
                       <p className="text-sm text-zinc-600 dark:text-zinc-400">
                         No results yet.

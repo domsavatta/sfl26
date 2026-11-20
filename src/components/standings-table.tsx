@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { playerRowStyles } from "./player-highlight";
 import ScrollX from "./scroll-x";
 
 export type StandingsColumn<T> = {
@@ -22,6 +23,7 @@ export type StandingsColumn<T> = {
  * Player standings table. The rank and player columns are pinned on the left,
  * so when a table has more columns than fit (e.g. on a phone) the stats
  * scroll sideways while you can still see whose row you're on.
+ * `highlightPlayerId` (the signed-in player) gets a highlighted row.
  */
 export default function StandingsTable<
   T extends { playerId: number; rank: number; playerName: string },
@@ -29,19 +31,19 @@ export default function StandingsTable<
   columns,
   rows,
   caption,
+  highlightPlayerId,
 }: {
   columns: readonly StandingsColumn<T>[];
   rows: T[];
   caption?: string;
+  highlightPlayerId?: number | null;
 }) {
   // Very wide tables (e.g. the week view's 25 columns) use tighter padding
   // so they fit on a desktop screen without scrolling.
   const dense = columns.length > 14;
   const cell = `py-2 px-1 ${dense ? "lg:px-1.5" : "sm:px-2"} last:pr-0 whitespace-nowrap`;
   // Pinned cells need their own background so scrolled cells don't show through.
-  const pinnedBg =
-    "bg-white dark:bg-zinc-900 group-hover:bg-zinc-50 dark:group-hover:bg-zinc-800";
-  const pinned = (key: string) =>
+  const pinned = (key: string, pinnedBg = playerRowStyles(false).pinnedBg) =>
     key === "rank"
       ? `sticky left-0 z-[1] w-8 min-w-8 pl-0 sm:pl-0 ${pinnedBg}`
       : key === "playerName"
@@ -65,9 +67,14 @@ export default function StandingsTable<
       ? "border-l border-zinc-200 dark:border-zinc-700 pl-2 sm:pl-3"
       : "";
 
-  const value = (row: T, col: StandingsColumn<T>): ReactNode => {
+  const value = (row: T, col: StandingsColumn<T>, isYou: boolean): ReactNode => {
     if (col.key === "playerName")
-      return <span className="block truncate">{row.playerName}</span>;
+      return (
+        <span className="block truncate">
+          {row.playerName}
+          {isYou && <span className="sr-only"> (you)</span>}
+        </span>
+      );
     if (col.format) return col.format(row);
     const v = row[col.key];
     return v === null || v === undefined ? "—" : String(v);
@@ -120,23 +127,24 @@ export default function StandingsTable<
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.playerId}
-              className="group border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-            >
-              {columns.map((col) => (
-                <td
-                  key={col.key}
-                  className={`${col.align} ${cell} ${pinned(col.key)} ${divider(col.key)} text-black dark:text-white ${
-                    col.key === "rank" ? "font-semibold" : ""
-                  } ${col.key === "playerName" ? "font-medium" : ""}`}
-                >
-                  {value(row, col)}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const isYou = highlightPlayerId != null && row.playerId === highlightPlayerId;
+            const styles = playerRowStyles(isYou);
+            return (
+              <tr key={row.playerId} className={styles.row} aria-current={isYou ? "true" : undefined}>
+                {columns.map((col) => (
+                  <td
+                    key={col.key}
+                    className={`${col.align} ${cell} ${pinned(col.key, styles.pinnedBg)} ${divider(col.key)} ${
+                      col.key === "playerName" ? styles.name : "text-black dark:text-white"
+                    } ${col.key === "rank" ? "font-semibold" : ""}`}
+                  >
+                    {value(row, col, isYou)}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </ScrollX>

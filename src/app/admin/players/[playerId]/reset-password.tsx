@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import type { PlayerFormState } from "@/app/actions/admin-players";
 
@@ -55,9 +56,11 @@ export default function ResetPassword({
       ) : (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Resetting passwords needs a default password. Set the current
-          season&apos;s default password (the{" "}
-          <code className="text-xs">defaultPassword</code> column on the Season
-          table).
+          season&apos;s default password on the{" "}
+          <Link href="/admin/seasons" className="text-blue-600 dark:text-blue-400 hover:underline">
+            Seasons page
+          </Link>
+          .
         </p>
       )}
     </section>

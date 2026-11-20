@@ -1,3 +1,4 @@
+import { playerRowStyles } from "@/components/player-highlight";
 import ScrollX from "@/components/scroll-x";
 import { line } from "@/lib/format";
 import type {
@@ -28,6 +29,7 @@ const resultLabel: Record<PickResult, string> = {
  * its own column. Picks for games that
  * haven't started are not loaded; those cells show a checkmark if the player
  * has picked, so everyone can see who still needs to.
+ * `highlightPlayerId` (the signed-in player) gets a highlighted row.
  */
 const ranks = {
   overallRank: { label: "Rk", title: "Overall season rank" },
@@ -38,20 +40,22 @@ export default function PicksGrid({
   games,
   players,
   sort,
+  highlightPlayerId,
 }: {
   games: PicksGame[];
   players: PicksPlayer[];
   sort: PicksSort;
+  highlightPlayerId?: number | null;
 }) {
   const [pinnedRank, otherRank] =
     sort === "week"
       ? (["weekRank", "overallRank"] as const)
       : (["overallRank", "weekRank"] as const);
   const cell = "py-2 px-1 sm:px-2 whitespace-nowrap";
-  const pinnedBg =
-    "bg-white dark:bg-zinc-900 group-hover:bg-zinc-50 dark:group-hover:bg-zinc-800";
-  const rankCell = `sticky left-0 z-[1] w-8 min-w-8 pl-0 text-left ${pinnedBg}`;
-  const nameCell = `sticky left-8 z-[1] min-w-[5.5rem] sm:min-w-[7rem] max-w-[7rem] sm:max-w-[9rem] text-left ${pinnedBg}`;
+  const rankCell = (pinnedBg = playerRowStyles(false).pinnedBg) =>
+    `sticky left-0 z-[1] w-8 min-w-8 pl-0 text-left ${pinnedBg}`;
+  const nameCell = (pinnedBg = playerRowStyles(false).pinnedBg) =>
+    `sticky left-8 z-[1] min-w-[5.5rem] sm:min-w-[7rem] max-w-[7rem] sm:max-w-[9rem] text-left ${pinnedBg}`;
 
   return (
     <ScrollX>
@@ -62,12 +66,12 @@ export default function PicksGrid({
         </caption>
         <thead>
           <tr className="border-b border-zinc-200 dark:border-zinc-800 align-bottom">
-            <th scope="col" className={`${cell} ${rankCell}`}>
+            <th scope="col" className={`${cell} ${rankCell()}`}>
               <span className="sr-only">{ranks[pinnedRank].title}</span>
             </th>
             <th
               scope="col"
-              className={`${cell} ${nameCell} font-semibold text-zinc-700 dark:text-zinc-300`}
+              className={`${cell} ${nameCell()} font-semibold text-zinc-700 dark:text-zinc-300`}
             >
               Player
             </th>
@@ -104,21 +108,21 @@ export default function PicksGrid({
           </tr>
         </thead>
         <tbody>
-          {players.map((p) => (
-            <tr
-              key={p.playerId}
-              className="group border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-            >
+          {players.map((p) => {
+            const isYou = highlightPlayerId != null && p.playerId === highlightPlayerId;
+            const styles = playerRowStyles(isYou);
+            return (
+            <tr key={p.playerId} className={styles.row} aria-current={isYou ? "true" : undefined}>
               <td
-                className={`${cell} ${rankCell} font-semibold tabular-nums text-black dark:text-white`}
+                className={`${cell} ${rankCell(styles.pinnedBg)} font-semibold tabular-nums text-black dark:text-white`}
               >
                 {p[pinnedRank] ?? ""}
               </td>
-              <th
-                scope="row"
-                className={`${cell} ${nameCell} font-medium text-black dark:text-white`}
-              >
-                <span className="block truncate">{p.playerName}</span>
+              <th scope="row" className={`${cell} ${nameCell(styles.pinnedBg)} ${styles.name}`}>
+                <span className="block truncate">
+                  {p.playerName}
+                  {isYou && <span className="sr-only"> (you)</span>}
+                </span>
               </th>
               <td className={`${cell} text-center tabular-nums text-zinc-600 dark:text-zinc-400`}>
                 {p[otherRank] ?? "—"}
@@ -172,7 +176,8 @@ export default function PicksGrid({
                 );
               })}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </ScrollX>

@@ -2,8 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { getAdmin } from "@/lib/admin";
-import { parseSeasonForm } from "@/lib/season-form";
-import { createSeason, makeSeasonCurrent, type SeasonProblem } from "@/models/admin-seasons";
+import { parseEditSeasonForm, parseSeasonForm } from "@/lib/season-form";
+import {
+  createSeason,
+  makeSeasonCurrent,
+  updateSeason,
+  type SeasonProblem,
+} from "@/models/admin-seasons";
 
 export type SeasonFormState = { ok: boolean; message: string } | null;
 
@@ -40,4 +45,21 @@ export async function setCurrentSeason(seasonId: number, _: SeasonFormState): Pr
   }
   if (!result.ok) return { ok: false, message: PROBLEMS[result.problem] };
   redirect(`/admin/seasons?current=${seasonId}`);
+}
+
+/** seasonId is bound. */
+export async function editSeason(seasonId: number, _: SeasonFormState, formData: FormData): Promise<SeasonFormState> {
+  if (!(await getAdmin())) return { ok: false, message: "Only admins can change seasons." };
+  const parsed = parseEditSeasonForm(formData);
+  if ("error" in parsed) return { ok: false, message: parsed.error };
+
+  let result;
+  try {
+    result = await updateSeason(seasonId, parsed.season);
+  } catch (error) {
+    console.error("updateSeason failed", error);
+    return { ok: false, message: "Couldn't save the season. Please try again." };
+  }
+  if (!result.ok) return { ok: false, message: PROBLEMS[result.problem] };
+  redirect(`/admin/seasons?saved=${seasonId}`);
 }

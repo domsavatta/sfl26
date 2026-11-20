@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { addSeason, setCurrentSeason } from "@/app/actions/admin-seasons";
 import ScrollX from "@/components/scroll-x";
 import { getAdmin } from "@/lib/admin";
@@ -39,12 +40,16 @@ export default async function SeasonsPage({
   const madeCurrentId = toInt(query.current);
   const added = seasons.find((s) => s.seasonId === addedId);
   const madeCurrent = seasons.find((s) => s.seasonId === madeCurrentId);
-  const highlightId = added?.seasonId ?? madeCurrent?.seasonId;
+  const savedId = toInt(query.saved);
+  const saved = seasons.find((s) => s.seasonId === savedId);
+  const highlightId = added?.seasonId ?? madeCurrent?.seasonId ?? saved?.seasonId;
   const message = added
     ? `Added the ${added.name}${added.current ? " and made it the current season" : ""}.`
     : madeCurrent
       ? `The ${madeCurrent.name} is now the current season.`
-      : null;
+      : saved
+        ? `Saved the ${saved.name}.`
+        : null;
 
   return (
     <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6">
@@ -59,7 +64,8 @@ export default async function SeasonsPage({
         </h2>
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
           The current season is the one Make Picks, the home page and the admin
-          weeks list use.
+          weeks list use. Choose a season to change its name, sort order or
+          default password.
         </p>
         {message && (
           <p role="status" className="mb-3 text-sm text-green-700 dark:text-green-400">
@@ -88,9 +94,17 @@ export default async function SeasonsPage({
                   }`}
                 >
                   <td className="py-2 pr-2 whitespace-nowrap">
-                    <span className="font-medium text-black dark:text-white">{s.name}</span>
+                    <Link
+                      href={`/admin/seasons/${s.seasonId}`}
+                      className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {s.name}
+                    </Link>
                     {!s.active && (
                       <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">Hidden</span>
+                    )}
+                    {!s.hasDefaultPassword && (
+                      <span className="ml-2 text-xs text-amber-700 dark:text-amber-400">No password</span>
                     )}
                   </td>
                   <td className="hidden sm:table-cell py-2 px-2 text-right tabular-nums">{s.weeks}</td>

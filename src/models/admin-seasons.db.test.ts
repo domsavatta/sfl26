@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { createFixtures, testRequest } from "../../test/db";
-import { createSeason, getSeasons, makeSeasonCurrent } from "./admin-seasons";
+import { getDefaultPassword } from "@/lib/default-password";
+import { createSeason, getSeasons, makeSeasonCurrent, updateSeason } from "./admin-seasons";
 
 async function seasonRow(seasonId: number) {
   const result = await testRequest().query(
@@ -76,5 +77,49 @@ describe("makeSeasonCurrent", () => {
 
   test("not-found for a missing season", async () => {
     expect(await makeSeasonCurrent(2_000_000_000)).toEqual({ ok: false, problem: "not-found" });
+  });
+});
+
+describe("updateSeason", () => {
+  test("changes the name, sort order and default password", async () => {
+    const f = await createFixtures(); // the current season, blank default password
+    expect((await getSeasons()).find((s) => s.seasonId === f.seasonId)?.hasDefaultPassword).toBe(false);
+
+    expect(await updateSeason(f.seasonId, { name: "Renamed Season", sort: 9999, defaultPassword: "newpw" })).toEqual({
+      ok: true,
+      seasonId: f.seasonId,
+    });
+
+    expect(await seasonRow(f.seasonId)).toMatchObject({ Name: "Renamed Season", Sort: 9999, defaultPassword: "newpw" });
+    expect((await getSeasons()).find((s) => s.seasonId === f.seasonId)?.hasDefaultPassword).toBe(true);
+    expect(await getDefaultPassword()).toBe("newpw");
+  });
+
+  test("a null password keeps the current one; keeping the same name is fine", async () => {
+    const f = await createFixtures();
+    await testRequest().query(`update Season set defaultPassword = 'keep' where SeasonID = ${f.seasonId}`);
+    const sort = (await seasonRow(f.seasonId)).Sort;
+
+    expect((await updateSeason(f.seasonId, { name: "Test Season", sort, defaultPassword: null })).ok).toBe(true);
+
+    expect(await seasonRow(f.seasonId)).toMatchObject({ Name: "Test Season", Sort: sort, defaultPassword: "keep" });
+  });
+
+  test("names are unique", async () => {
+    const f = await createFixtures();
+    const other = await createSeason({ name: "2099 Season", defaultPassword: "x", makeCurrent: false });
+    expect(other.ok).toBe(true);
+
+    expect(await updateSeason(f.seasonId, { name: "2099 Season", sort: 1, defaultPassword: null })).toEqual({
+      ok: false,
+      problem: "duplicate-name",
+    });
+  });
+
+  test("not-found for a missing season", async () => {
+    expect(await updateSeason(2_000_000_000, { name: "Nope", sort: 1, defaultPassword: null })).toEqual({
+      ok: false,
+      problem: "not-found",
+    });
   });
 });

@@ -11,6 +11,10 @@
  * - needs a default password (Season.defaultPassword, up to 10 characters),
  *   used for new players and password resets;
  * - starts with no players: add them on the admin Players page.
+ * A season's name, sort order and default password can be changed later.
+ * Sort decides the order seasons are listed in (highest first) and needn't
+ * be unique. The default password never leaves the server: pages only say
+ * whether one is set.
  * Season.TotalPlayers isn't used; it's required, so new seasons get 0.
  */
 import { query } from 'db';
@@ -23,12 +27,20 @@ export type AdminSeason = {
   current: boolean;
   weeks: number;
   players: number;
+  hasDefaultPassword: boolean;
 };
 
 export type SeasonInput = {
   name: string;
   defaultPassword: string;
   makeCurrent: boolean;
+};
+
+export type SeasonEdit = {
+  name: string;
+  sort: number;
+  /** null keeps the current default password. */
+  defaultPassword: string | null;
 };
 
 export type SeasonProblem = 'not-found' | 'duplicate-name';
@@ -44,7 +56,9 @@ export async function getSeasons(): Promise<AdminSeason[]> {
      select s.SeasonID seasonId, s.Name name, isnull(s.Sort, 0) sort, s.Active active,
        cast(iif(s.SeasonID = @current, 1, 0) as bit) [current],
        (select count(*) from Week w where w.SeasonID = s.SeasonID) weeks,
-       (select count(*) from PlayersSeason ps where ps.SeasonID = s.SeasonID) players
+       (select count(*) from PlayersSeason ps where ps.SeasonID = s.SeasonID) players,
+       -- 'NULL' is the column's default text, which isn't a real password.
+       cast(iif(nullif(nullif(s.defaultPassword, ''), 'NULL') is null, 0, 1) as bit) hasDefaultPassword
      from Season s
      order by s.Sort desc, s.SeasonID desc`,
   );
@@ -107,6 +121,35 @@ export async function makeSeasonCurrent(seasonId: number): Promise<SaveSeasonRes
      commit;
      select @problem problem, iif(@problem is null, @seasonId, null) seasonId;`,
     { seasonId },
+  );
+  return toResult(result.recordset[0]);
+}
+
+/** One season, or null if it doesn't exist. */
+export async function getSeason(seasonId: number): Promise<AdminSeason | null> {
+  return (await getSeasons()).find((s) => s.seasonId === seasonId) ?? null;
+}
+
+/** Changes a season's name, sort order and (unless null) default password. */
+export async function updateSeason(seasonId: number, season: SeasonEdit): Promise<SaveSeasonResult> {
+  const result = await query<Row>(
+    `set xact_abort on;
+     begin transaction;
+     declare @problem varchar(20) = case
+       when not exists (select 1 from Season with (updlock, holdlock) where SeasonID = @seasonId) then 'not-found'
+       when exists (select 1 from Season with (updlock, holdlock) where Name = @name and SeasonID <> @seasonId) then 'duplicate-name'
+     end;
+     if @problem is null
+     begin
+       update Season set Name = @name, Sort = @sort where SeasonID = @seasonId;
+       -- Separately: isnull(@defaultPassword, defaultPassword) would take the
+       -- type of a null param (1 character) and truncate the kept password.
+       if @defaultPassword is not null
+         update Season set defaultPassword = @defaultPassword where SeasonID = @seasonId;
+     end
+     commit;
+     select @problem problem, iif(@problem is null, @seasonId, null) seasonId;`,
+    { seasonId, name: season.name, sort: season.sort, defaultPassword: season.defaultPassword },
   );
   return toResult(result.recordset[0]);
 }

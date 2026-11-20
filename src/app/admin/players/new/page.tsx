@@ -65,9 +65,11 @@ export default async function AddPlayerPage() {
         ) : (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Adding players needs a default password for them to sign in with. Set
-            the current season&apos;s default password (the{" "}
-            <code className="text-xs">defaultPassword</code> column on the Season
-            table).
+            the current season&apos;s default password on the{" "}
+            <Link href="/admin/seasons" className="text-blue-600 dark:text-blue-400 hover:underline">
+              Seasons page
+            </Link>
+            .
           </p>
         )}
       </section>

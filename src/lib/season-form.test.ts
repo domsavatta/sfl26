@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { nextSeasonName, parseSeasonForm } from "./season-form";
+import { nextSeasonName, parseEditSeasonForm, parseSeasonForm } from "./season-form";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -19,6 +19,34 @@ describe("parseSeasonForm", () => {
     expect(parseSeasonForm(form({ name: "2024 Season", defaultPassword: "  " }))).toHaveProperty("error");
     expect(parseSeasonForm(form({ name: "2024 Season", defaultPassword: "x".repeat(11) }))).toHaveProperty("error");
     expect(parseSeasonForm(form({ name: "2024 Season", defaultPassword: "null" }))).toHaveProperty("error");
+  });
+});
+
+describe("parseEditSeasonForm", () => {
+  test("reads a name, sort order and new password (as typed)", () => {
+    expect(parseEditSeasonForm(form({ name: " 2024  Season ", sort: " 23 ", defaultPassword: " pw 2 " }))).toEqual({
+      season: { name: "2024 Season", sort: 23, defaultPassword: " pw 2 " },
+    });
+  });
+
+  test("a blank password keeps the current one", () => {
+    expect(parseEditSeasonForm(form({ name: "2024 Season", sort: "-1", defaultPassword: "" }))).toEqual({
+      season: { name: "2024 Season", sort: -1, defaultPassword: null },
+    });
+  });
+
+  test("needs a name, a whole-number sort order and a usable password", () => {
+    const edit = (fields: Record<string, string>) =>
+      parseEditSeasonForm(form({ name: "2024 Season", sort: "1", defaultPassword: "", ...fields }));
+    expect(edit({ name: " " })).toHaveProperty("error");
+    expect(edit({ name: "x".repeat(51) })).toHaveProperty("error");
+    expect(edit({ sort: "" })).toHaveProperty("error");
+    expect(edit({ sort: "1.5" })).toHaveProperty("error");
+    expect(edit({ sort: "abc" })).toHaveProperty("error");
+    expect(edit({ sort: "99999999999" })).toHaveProperty("error");
+    expect(edit({ defaultPassword: "  " })).toHaveProperty("error");
+    expect(edit({ defaultPassword: "x".repeat(11) })).toHaveProperty("error");
+    expect(edit({ defaultPassword: "NULL" })).toHaveProperty("error");
   });
 });
 

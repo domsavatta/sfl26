@@ -8,6 +8,7 @@ import StandingsTable, {
   type StandingsColumn,
 } from "@/components/standings-table";
 import { toInt } from "@/lib/format";
+import { getCurrentPlayer } from "@/lib/session";
 import {
   getOverallStandings,
   getStandingsSeasons,
@@ -62,7 +63,8 @@ export default async function Standings({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const seasons = await getStandingsSeasons();
+  const [seasons, me] = await Promise.all([getStandingsSeasons(), getCurrentPlayer()]);
+  const highlightPlayerId = me?.playerId;
 
   // Default: current season, overall. Unknown ids fall back the same way.
   const season =
@@ -104,13 +106,13 @@ export default async function Standings({
       {season && overall && (
         <>
           <Section title={`${season.seasonName} Standings`}>
-            <StandingsTable columns={overallColumns} rows={overall.combined} />
+            <StandingsTable columns={overallColumns} rows={overall.combined} highlightPlayerId={highlightPlayerId} />
           </Section>
           <Section title={`${season.seasonName} College Standings`}>
-            <StandingsTable columns={overallColumns} rows={overall.college} />
+            <StandingsTable columns={overallColumns} rows={overall.college} highlightPlayerId={highlightPlayerId} />
           </Section>
           <Section title={`${season.seasonName} NFL Standings`}>
-            <StandingsTable columns={overallColumns} rows={overall.nfl} />
+            <StandingsTable columns={overallColumns} rows={overall.nfl} highlightPlayerId={highlightPlayerId} />
           </Section>
           <Legend columns={overallColumns} />
         </>
@@ -132,7 +134,7 @@ export default async function Standings({
               {/* A league with no official games this week has only 0-0 rows
                   (and miscounted weekly wins), so don't show a table. */}
               {rows.some((r) => r.wins + r.losses > 0) ? (
-                <StandingsTable columns={weekColumns} rows={rows} />
+                <StandingsTable columns={weekColumns} rows={rows} highlightPlayerId={highlightPlayerId} />
               ) : (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   No official {league ? `${league} ` : ""}games this week.
